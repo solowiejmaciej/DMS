@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: users-api
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U root" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+        
+  dms:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "host=postgres user=root password=root dbname=dms sslmode=disable"
+      PORT: 3000
+      AES_SECRET: "91da898afe52136f22d8ade26eb3055c"
+      AES_IV: "X$@weCmqVRZTF!@#"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://dms/health"]
+  
