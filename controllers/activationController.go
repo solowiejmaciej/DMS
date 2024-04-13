@@ -1,41 +1,66 @@
 package controllers
 
 import (
-	"dms/models"
+	"dms/entites"
 	"dms/repositories"
-	"dms/services"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 )
 
 func ActivateDevice(c *gin.Context) {
-	var body struct {
-		DeviceToken string `json:"device_token"`
-	}
+	apiKey := c.GetHeader("X-Api-Key")
+	deviceId := c.Param("deviceId")
 
-	err := c.BindJSON(&body)
+	err, userId := repositories.GetByApiKey(apiKey)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while fetching user details"})
 		return
 	}
 
-	var decryptedToken, err2 = services.Decrypt(body.DeviceToken)
-	if err2 != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid device id"})
-		log.Error("Error while decrypting token", err2)
-		return
-	}
-
-	err3 := repositories.AddDevice(models.Device{
-		DeviceId: decryptedToken,
-		Token:    body.DeviceToken,
+	err = repositories.AddDevice(entites.Device{
+		DeviceId: deviceId,
+		UserId:   userId,
 	})
-	if err3 != nil {
+
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while adding device"})
-		log.Error("Error while adding device", err2)
+		log.Error("Error while adding device", err)
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Device activated successfully"})
+}
+
+func DeleteDevice(c *gin.Context) {
+	apiKey := c.GetHeader("X-Api-Key")
+	deviceId := c.Param("deviceId")
+
+	err, userId := repositories.GetByApiKey(apiKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while fetching user details"})
+		return
+	}
+
+	_, err = repositories.DeleteDeviceConfiguration(deviceId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while deleting device configuration"})
+		log.Error("Error while deleting device configuration", err)
+		return
+	}
+
+	_, err = repositories.GetByDeviceId(deviceId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Device not found"})
+		return
+	}
+
+	err = repositories.DeleteDevice(deviceId, userId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while deleting device"})
+		log.Error("Error while deleting device", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Device deleted successfully"})
 }

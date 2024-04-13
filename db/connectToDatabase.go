@@ -1,4 +1,4 @@
-package initializers
+package db
 
 import (
 	log "github.com/sirupsen/logrus"

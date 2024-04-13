@@ -1,6 +1,9 @@
 version: '3.8'
+volumes:
+  redis_data: {}
 services:
   postgres:
+    container_name: dms-postgres
     image: postgres:latest
     environment:
       POSTGRES_USER: root
@@ -16,18 +19,38 @@ services:
       timeout: 5s
       retries: 5
         
+  redis:
+    container_name: dms-redis
+    image: 'docker.io/bitnami/redis'
+    ports:
+      - "6379:6379"
+    environment:
+      REDIS_PASSWORD: root
+      REDIS_AOF_ENABLED: "no"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   dms:
+    container_name: dms
     build: .
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DATABASE_URL: "host=postgres user=root password=root dbname=dms sslmode=disable"
       PORT: 3000
-      AES_SECRET: "91da898afe52136f22d8ade26eb3055c"
-      AES_IV: "X$@weCmqVRZTF!@#"
+      REDIS_URL: "redis:6379"
+      REDIS_PASSWORD: "root"
+      AZURE_STORAGE_ACCOUNT_NAME: "name"
+      AZURE_STORAGE_ACCOUNT_KEY: "key"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://dms/health"]
   

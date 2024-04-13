@@ -1,9 +1,10 @@
-package models
+package entites
 
 import "gorm.io/gorm"
 
 type Device struct {
 	gorm.Model
 	DeviceId string `gorm:"unique"`
-	Token    string
+	UserId   uint   `gorm:"not null"`
+	User     User
 }
