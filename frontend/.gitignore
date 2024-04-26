@@ -1,0 +1,28 @@
+# Ignore dependencies
+/node_modules
+
+# Ignore build output
+/dist
+
+# Ignore environment variables
+.env
+
+# Ignore editor and IDE files
+.idea
+.vscode
+*.sublime-*
+*.swp
+
+# Ignore logs and cache files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+logs
+*.pid
+*.seed
+*.pid.lock
+
+# Ignore OS generated files
+.DS_Store
+Thumbs.db

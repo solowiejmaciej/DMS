@@ -13,7 +13,8 @@ For more information about the library please visit [DMS-ESP32](https://github/s
 - [x] GIN
 - [x] GORM
 - [x] Docker
-- [x] JWT
+- [ ] JWT
+- [ ] Websockets
 
 This project is on its early stage of development.
 There is tone of features to be added.

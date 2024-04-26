@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 volumes:
   redis_data: {}
 services:
@@ -14,14 +14,14 @@ services:
     volumes:
       - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U root" ]
+      test: ["CMD-SHELL", "pg_isready -U root"]
       interval: 10s
       timeout: 5s
       retries: 5
-        
+
   redis:
     container_name: dms-redis
-    image: 'docker.io/bitnami/redis'
+    image: "docker.io/bitnami/redis"
     ports:
       - "6379:6379"
     environment:
@@ -30,13 +30,13 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: [ "CMD-SHELL", "redis-cli ping" ]
+      test: ["CMD-SHELL", "redis-cli ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-  dms:
-    container_name: dms
-    build: .
+  dms-api:
+    container_name: dms-api
+    build: ./api/dms
     ports:
       - "3000:3000"
     depends_on:
@@ -49,8 +49,20 @@ services:
       PORT: 3000
       REDIS_URL: "redis:6379"
       REDIS_PASSWORD: "root"
-      AZURE_STORAGE_ACCOUNT_NAME: "name"
-      AZURE_STORAGE_ACCOUNT_KEY: "key"
+      MQTT_CLIENT_ID: "DMS"
+      JWT_SECRET: "dmsSecret"
+      AZURE_STORAGE_ACCOUNT_NAME: "AZURE_STORAGE_ACCOUNT_KEY"
+      AZURE_STORAGE_ACCOUNT_KEY: "AZURE_STORAGE_ACCOUNT_KEY"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://dms/health"]
-  
+      test: ["CMD", "curl", "-f", "http://dms-api/health"]
+  dms-web:
+    container_name: dms-web
+    build: ./frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - dms-api
+    environment:
+      VUE_APP_API_URL: "http://dms-api/api"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://dms-frontend"]
