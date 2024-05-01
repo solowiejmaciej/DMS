@@ -9,6 +9,7 @@ import App from "./App.vue";
 import "primevue/resources/themes/lara-dark-cyan/theme.css";
 import "primeicons/primeicons.css";
 
+import Chart from "primevue/chart";
 import AutoComplete from "primevue/autocomplete";
 import Accordion from "primevue/accordion";
 import AccordionTab from "primevue/accordiontab";
@@ -231,5 +232,6 @@ app.component("TreeSelect", TreeSelect);
 app.component("TreeTable", TreeTable);
 app.component("TriStateCheckbox", TriStateCheckbox);
 app.component("VirtualScroller", VirtualScroller);
+app.component("Chart", Chart);
 
 app.mount("#app");

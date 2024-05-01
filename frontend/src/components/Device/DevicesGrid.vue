@@ -1,47 +1,28 @@
 <template>
-  <div class="flex">
-    <div class="w-1/2 overflow-auto card mt-2">
-      <div class="items-right justify-end flex mb-2">
+  <div class="flex" v-if="!shouldShowInstruction">
+    <div class="w-3/5 overflow-auto card">
+      <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-semibold">Devices</h1>
         <Button
+          label="Refresh"
           icon="pi pi-refresh"
-          text
-          :loading="isDataTableLoading"
-          raised
-          rounded
-          aria-label="Filter"
-          v-tooltip="'Refresh table'"
-          @click="handleRefreshData"
-        />
-      </div>
-      <div
-        class="absolute inset-0 flex items-center justify-center"
-        v-if="isDataTableLoading"
-      >
-        <ProgressSpinner
-          style="width: 50px; height: 50px"
-          strokeWidth="8"
-          fill="var(--surface-ground)"
-          animationDuration="1.5s"
+          @click="getDevices"
+          class="p-button-sm p-button-text"
         />
       </div>
       <DataTable
-        v-else
-        stateStorage="session"
-        stateKey="dt-state-demo-session"
-        resizableColumns
-        columnResizeMode="fit"
-        showGridlines
+        :loading="isDataTableLoading"
         scrollable
-        scrollHeight="50rem"
+        scrollHeight="30rem"
         :value="devices"
-        tableStyle="min-width: 50rem text-center "
         selectionMode="single"
         dataKey="deviceId"
         v-model:selection="selectedDevice"
         filterDisplay="row"
         v-model:filters="filters"
+        :selection.sync="selectedDevice"
       >
-        <Column header="#" headerStyle="width:3rem " :showFilterMenu="false">
+        <Column header="#" :showFilterMenu="false">
           <template #body="slotProps">
             {{ slotProps.index + 1 }}
           </template>
@@ -50,45 +31,45 @@
           field="deviceId"
           header="Id"
           :showFilterMenu="false"
-          class="text-center"
+          style="min-width: 10rem"
         >
           <template #filter="{ filterModel, filterCallback }">
             <InputText
               v-model="filterModel.value"
               type="text"
               @input="filterCallback()"
-              class="p-column-filter"
               placeholder="Search"
+              class="p-column-filter p-inputtext-sm"
             /> </template
         ></Column>
         <Column
           field="deviceModel"
-          header="Name"
+          header="Model"
           :showFilterMenu="false"
-          class="text-center"
+          style="min-width: 10rem"
         >
           <template #filter="{ filterModel, filterCallback }">
             <InputText
               v-model="filterModel.value"
               type="text"
               @input="filterCallback()"
-              class="p-column-filter"
               placeholder="Search"
-            /> </template
-        ></Column>
-
+              class="p-column-filter p-inputtext-sm"
+            />
+          </template>
+        </Column>
         <Column
           field="softwareVersion"
           header="Software version"
           :showFilterMenu="false"
-          class="text-center"
+          style="min-width: 10rem"
         >
           <template #filter="{ filterModel, filterCallback }">
             <InputText
               v-model="filterModel.value"
               type="text"
               @input="filterCallback()"
-              class="p-column-filter w-full"
+              class="p-column-filter p-inputtext-sm"
               placeholder="Search"
             />
           </template>
@@ -97,7 +78,7 @@
           field="status"
           header="Device status"
           :showFilterMenu="false"
-          class="text-center"
+          style="min-width: 10rem"
         >
           <template #filter="{ filterModel, filterCallback }">
             <Dropdown
@@ -105,7 +86,7 @@
               @change="filterCallback()"
               :options="statuses"
               placeholder="Select One"
-              class="p-column-filter"
+              class="p-column-filter p-inputtext-sm"
               style="max-width: 12rem"
               :showClear="true"
             >
@@ -126,20 +107,47 @@
         </Column>
       </DataTable>
     </div>
-    <div class="w-1/2 flex items-center justify-center">
-      <DeviceConfiguration
-        v-if="selectedDevice.deviceId"
-        :device="selectedDevice"
-      />
+    <div class="ml-2">
+      <h2 class="flex items-center justify-center">
+        <i class="pi pi-microchip mr-2" style="font-size: 1.5rem"></i>
+        Device: {{ selectedDevice.deviceId }}
+      </h2>
+      <TabView
+        v-if="selectedDevice"
+        style="min-width: 40rem; min-height: 20rem"
+      >
+        <TabPanel>
+          <template #header>
+            <div class="header-content">
+              <i class="pi pi-cog mr-2"></i> Configuration
+            </div>
+          </template>
+          <DeviceConfiguration :device="selectedDevice" />
+        </TabPanel>
+        <TabPanel>
+          <template #header>
+            <div class="header-content">
+              <i class="pi pi-code mr-2"></i> Software
+            </div>
+          </template>
+          <Software :device="selectedDevice" />
+        </TabPanel>
+      </TabView>
     </div>
   </div>
+  <AddDeviceInstructions
+    v-if="shouldShowInstruction"
+    @setupFinished="handleSetupFinished"
+  />
 </template>
 
 <script setup>
-import { ref, watch, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, watch } from "vue";
 import { FilterMatchMode } from "primevue/api";
 import { useToast } from "primevue/usetoast";
 import apiClient from "../../Api/apiClient";
+import AddDeviceInstructions from "./AddDeviceInstructions.vue";
+import Software from "./Software/Software.vue";
 
 let isDataTableLoading = ref(false);
 
@@ -147,52 +155,78 @@ const toast = useToast();
 
 import DeviceConfiguration from "./DeviceConfiguration.vue";
 const selectedDevice = ref({});
+const shouldShowInstruction = ref(false);
 
 let devices = reactive([]);
 
 const statuses = ref(["ONLINE", "OFFLINE"]);
 
 const filters = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
   deviceId: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
   deviceModel: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
   softwareVersion: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
   status: { value: null, matchMode: FilterMatchMode.EQUALS },
 });
 
-const getDevices = () => {
-  apiClient
-    .get("/device")
-    .then((response) => {
-      devices = response.data.map(mapDeviceData);
-      isDataTableLoading.value = true;
-    })
-    .catch((error) => {
+watch(selectedDevice, (newVal, oldVal) => {
+  if (newVal == null) {
+    selectedDevice.value = oldVal;
+  }
+});
+
+const getDevices = async () => {
+  isDataTableLoading.value = true;
+
+  try {
+    const response = await apiClient.get("/device");
+    if (response.data.length == 0) {
+      shouldShowInstruction.value = true;
+      return;
+    }
+    devices = response.data.map(mapDeviceData);
+    try {
+      await Promise.all(
+        devices.map(async (device) => {
+          device.status = await getDeviceStatus(device.deviceId);
+        })
+      );
+
+      toast.add({
+        severity: "success",
+        summary: "Success",
+        detail: "Devices fetched successfully",
+        life: 3000,
+      });
+    } catch (error) {
       toast.add({
         severity: "error",
         summary: "Error",
-        detail: "An error occurred while fetching devices",
+        detail: "Failed to fetch devices status",
         life: 3000,
       });
-    })
-    .finally(() => {
-      isDataTableLoading.value = false;
+    }
+  } catch (error) {
+    console.log(error);
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: "Failed to fetch devices",
+      life: 3000,
     });
+  } finally {
+    isDataTableLoading.value = false;
+  }
 };
 
-onMounted(() => {
-  getDevices();
+const getDeviceStatus = async (deviceId) => {
+  const response = await apiClient.get(`/device/${deviceId}/status`);
+  return response.data.status;
+};
+
+onMounted(async () => {
+  await getDevices();
+  selectedDevice.value = devices[0];
 });
-
-const handleRefreshData = () => {
-  toast.add({
-    severity: "success",
-    summary: "Data refreshed",
-    detail: "Data has been refreshed",
-    life: 3000,
-  });
-  getDevices();
-};
 
 const getSeverity = (status) => {
   switch (status) {
@@ -217,4 +251,16 @@ function mapDeviceData(device) {
     codeBaseUrl: device.code_base_url,
   };
 }
+
+const handleSetupFinished = () => {
+  shouldShowInstruction.value = false;
+  getDevices();
+};
 </script>
+
+<style scoped>
+::v-deep .p-tabview-nav .p-tabview-nav-link {
+  border-radius: 0 !important;
+  background: none !important;
+}
+</style>

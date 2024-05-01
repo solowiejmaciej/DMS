@@ -23,19 +23,17 @@
 import { ref, reactive, watch, defineProps, defineEmits } from "vue";
 import { useToast } from "primevue/usetoast";
 import { onMounted } from "vue";
-
-const emit = defineEmits(["phone-number-confirmed"]);
+import apiClient from "../Api/apiClient";
 
 const props = defineProps({
   headerText: String,
-  phoneNumber: {
-    type: String,
-    required: true,
-  },
 });
+const emit = defineEmits(["phone-number-confirmed"]);
+
 const toast = useToast();
 
-onMounted(() => {
+onMounted(async () => {
+  await send2faCode();
 });
 
 let shouldDisableResend = ref(false);
@@ -70,17 +68,22 @@ watch(confirmPhoneNumberCode, (newValue) => {
   }
 });
 
-const submit2faCode = () => {
-  if (confirmPhoneNumberCode.value === "123456") {
-    toast.add({
-      severity: "success",
-      summary: "Success Message",
-      detail: "Code submitted successfully",
-      life: 3000,
+const submit2faCode = async () => {
+  try {
+    let res = await apiClient.post("/user/confirm-phone", {
+      code: confirmPhoneNumberCode.value,
     });
-    emit("phone-number-confirmed");
-  } else {
-    confirmPhoneNumberCode.value = "";
+
+    if (res.status === 200) {
+      toast.add({
+        severity: "success",
+        summary: "Success",
+        detail: "Phone number confirmed",
+        life: 3000,
+      });
+      emit("phone-number-confirmed");
+    }
+  } catch (error) {
     toast.add({
       severity: "error",
       summary: "Error Message",
@@ -90,13 +93,27 @@ const submit2faCode = () => {
   }
 };
 
-const resend2faCode = () => {
+const send2faCode = async () => {
+  let res = await apiClient.post("/user/send-confirm-phone");
+  if (res.status === 200) {
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: "Code sent successfully",
+      life: 3000,
+    });
+  } else {
+    toast.add({
+      severity: "error",
+      summary: "Error Message",
+      detail: "Failed to send code",
+      life: 3000,
+    });
+  }
+};
+
+const resend2faCode = async () => {
   shouldDisableResend.value = true;
-  toast.add({
-    severity: "success",
-    summary: "Success",
-    detail: "Code sent successfully",
-    life: 3000,
-  });
+  await send2faCode();
 };
 </script>

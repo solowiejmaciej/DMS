@@ -2,19 +2,19 @@ package repositories
 
 import (
 	"dms/db"
-	"dms/entites"
+	"dms/entities"
 )
 
-func AddUser(User entites.User) (entites.User, error) {
+func AddUser(User entities.User) (entities.User, error) {
 	result := db.DB.Create(&User)
 	if result.Error != nil {
-		return entites.User{}, result.Error
+		return entities.User{}, result.Error
 	}
 	return User, nil
 }
 
-func GetById(id uint) (entites.User, error) {
-	var user entites.User
+func GetById(id uint) (entities.User, error) {
+	var user entities.User
 	result := db.DB.First(&user, id)
 	if result.Error != nil {
 		return user, result.Error
@@ -23,7 +23,7 @@ func GetById(id uint) (entites.User, error) {
 }
 
 func GetByApiKey(apiKey string) (error error, userId uint) {
-	var user entites.User
+	var user entities.User
 	result := db.DB.Where("dms_api_key = ?", apiKey).First(&user)
 	if result.Error != nil {
 		return result.Error, user.ID
@@ -31,8 +31,8 @@ func GetByApiKey(apiKey string) (error error, userId uint) {
 	return nil, user.ID
 }
 
-func GetByEmail(email string) (error, entites.User) {
-	var user entites.User
+func GetByEmail(email string) (error, entities.User) {
+	var user entities.User
 	result := db.DB.Where("email = ?", email).First(&user)
 	if result.Error != nil {
 		return result.Error, user
@@ -40,10 +40,10 @@ func GetByEmail(email string) (error, entites.User) {
 	return nil, user
 }
 
-func UpdateUser(user entites.User) (entites.User, error) {
+func UpdateUser(user entities.User) (entities.User, error) {
 	result := db.DB.Save(&user)
 	if result.Error != nil {
-		return entites.User{}, result.Error
+		return entities.User{}, result.Error
 	}
 	return user, nil
 }

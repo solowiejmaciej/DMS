@@ -1,7 +1,8 @@
 package controllers
 
 import (
-	"dms/entites"
+	"dms/entities"
+	"dms/initializers"
 	"dms/managers"
 	"dms/models"
 	"dms/repositories"
@@ -35,7 +36,7 @@ func AddUser(c *gin.Context) {
 		return
 	}
 
-	user := entites.User{
+	user := entities.User{
 		FirstName:              body.FirstName,
 		LastName:               body.LastName,
 		Email:                  body.Email,
@@ -138,4 +139,56 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+}
+
+func PublishSendConfirmPhoneNumber(context *gin.Context) {
+	userToken := context.GetHeader("Authorization")
+
+	err, user := managers.GetUserFromValidToken(userToken)
+
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Please try again later"})
+		return
+	}
+	services.PublishSendConfirmPhoneNumber(user.ID, initializers.ChannelRabbitMQ, initializers.RedisClient)
+	context.JSON(http.StatusOK, gin.H{"message": "OK"})
+}
+
+func ConfirmPhoneNumber(context *gin.Context) {
+	userToken := context.GetHeader("Authorization")
+
+	err, user := managers.GetUserFromValidToken(userToken)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Please try again later"})
+
+		return
+	}
+
+	body := struct {
+		Code string `json:"code"`
+	}{}
+
+	err = context.BindJSON(&body)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	result := services.CheckCodeForUser(user.ID, body.Code, initializers.RedisClient)
+	if result == false {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid code"})
+		return
+	}
+
+	dbUser, err := repositories.GetById(user.ID)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Please try again later"})
+	}
+	dbUser.IsPhoneNumberConfirmed = true
+	_, err = repositories.UpdateUser(dbUser)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Please try again later"})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"message": "OK"})
 }

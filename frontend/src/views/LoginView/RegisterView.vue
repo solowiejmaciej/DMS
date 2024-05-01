@@ -243,9 +243,8 @@
           </template>
           <template #content="{ prevCallback, nextCallback }">
             <ConfirmPhoneNumber
-              v-if="phoneNumber && active === 2"
+              v-if="shouldShowConfirm && active === 2"
               headerText="Authenticate Your Account"
-              :phoneNumber="phoneNumber"
               @phone-number-confirmed="handlePhoneNumberConfirmed"
             />
             <div class="flex pt-4 justify-between">
@@ -327,6 +326,7 @@ let termsAgreed = ref();
 let userEmail = ref("");
 let userPassword = ref("");
 let selectedCountry = ref("");
+let shouldShowConfirm = ref(false);
 
 let shouldDisableNext = ref(true);
 
@@ -414,14 +414,14 @@ const validatePersonalInfo = () => {
   }
 };
 
-const handleRegisterUser = () => {
+const handleRegisterUser = async () => {
   let date = new Date(birthDay.value);
   let formattedDate = `${date.getFullYear()}-${String(
     date.getMonth() + 1
   ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-  apiClient
-    .post("/user", {
+  try {
+    let res = await apiClient.post("/user", {
       email: userEmail.value,
       password: userPassword.value,
       firstname: firstName.value,
@@ -429,40 +429,29 @@ const handleRegisterUser = () => {
       phoneNumber: phoneNumber.value,
       birthDate: formattedDate,
       country: selectedCountry.value.name,
-    })
-    .then((response) => {
-      if (response.status === 201) {
-        store
-          .dispatch("login", {
-            email: userEmail.value,
-            password: userPassword.value,
-          })
-          .then(() => {
-            toast.add({
-              severity: "success",
-              summary: "Success Message",
-              detail: "User registered successfully",
-              life: 3000,
-            });
-          })
-          .catch((err) => {
-            toast.add({
-              severity: "error",
-              summary: "Login Error",
-              detail: err.message,
-              life: 3000,
-            });
-          });
-      }
-    })
-    .catch((error) => {
+    });
+
+    if (res.status === 201) {
+      await store.dispatch("login", {
+        email: userEmail.value,
+        password: userPassword.value,
+      });
+      shouldShowConfirm.value = true;
       toast.add({
-        severity: "error",
-        summary: "Error Message",
-        detail: "User registration failed",
+        severity: "success",
+        summary: "Success Message",
+        detail: "User registered successfully",
         life: 3000,
       });
+    }
+  } catch {
+    toast.add({
+      severity: "error",
+      summary: "Error Message",
+      detail: "Failed to register user",
+      life: 3000,
     });
+  }
 };
 </script>
 

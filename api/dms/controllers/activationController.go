@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"dms/entites"
+	"dms/entities"
 	"dms/models"
 	"dms/repositories"
 	"github.com/gin-gonic/gin"
@@ -26,19 +26,37 @@ func ActivateDevice(c *gin.Context) {
 		return
 	}
 
-	err = repositories.AddDevice(entites.Device{
-		DeviceId:        deviceId,
-		UserId:          userId,
-		DeviceModel:     body.DeviceModel,
-		DeviceBoardType: body.DeviceBoardType,
-		SoftwareVersion: body.SoftwareVersion,
-		CodeBaseUrl:     body.CodeBaseUrl,
-	})
+	currentDevice, _ := repositories.GetByDeviceId(deviceId)
 
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while adding device"})
-		log.Error("Error while adding device", err)
-		return
+	if currentDevice.DeviceId != "" {
+		if userId == currentDevice.UserId {
+			repositories.UpdateDevice(entities.Device{
+				DeviceId:        deviceId,
+				DeviceModel:     body.DeviceModel,
+				DeviceBoardType: body.DeviceBoardType,
+				SoftwareVersion: body.SoftwareVersion,
+				CodeBaseUrl:     body.CodeBaseUrl,
+			}, currentDevice)
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Another user is using this device. Please delete it first"})
+			return
+		}
+	} else {
+		err = repositories.AddDevice(entities.Device{
+			DeviceId:        deviceId,
+			UserId:          userId,
+			DeviceModel:     body.DeviceModel,
+			DeviceBoardType: body.DeviceBoardType,
+			SoftwareVersion: body.SoftwareVersion,
+			CodeBaseUrl:     body.CodeBaseUrl,
+		})
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Error while adding device"})
+			log.Error("Error while adding device", err)
+			return
+		}
+
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Device activated successfully"})

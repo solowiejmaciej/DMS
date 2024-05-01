@@ -1,5 +1,11 @@
 <template>
-  <Toast></Toast>
+  <Sidebar
+    v-model:visible="showNotifications"
+    position="left"
+    :baseZIndex="10000"
+  >
+    <Notifications />
+  </Sidebar>
   <Menubar :model="items">
     <template #start>
       <div
@@ -68,6 +74,7 @@
             @userUpdated="handleUserUpdated"
             @hide="handleDialogHide"
           />
+          <ReportBug v-if="showReportBug" @bugReported="handleBugReported" />
         </Dialog>
       </div>
     </template>
@@ -79,6 +86,8 @@ import { ref, onMounted } from "vue";
 import apiClient from "../Api/apiClient";
 import { useRouter } from "vue-router";
 import UserData from "./UserData.vue";
+import Notifications from "./Notifications/Notifications.vue";
+import ReportBug from "./ReportBug/ReportBug.vue";
 import { useStore } from "vuex";
 import { useToast } from "primevue/usetoast";
 
@@ -88,7 +97,8 @@ const router = useRouter();
 
 let showDialog = ref(false);
 let showUserData = ref(false);
-
+let showNotifications = ref(false);
+let showReportBug = ref(false);
 let user = ref("");
 
 let label = ref("");
@@ -97,13 +107,11 @@ let showDialogHeader = ref("");
 
 const getUser = async () => {
   try {
-    const response = await apiClient.post("/me", {
-      token: store.state.token,
-    });
+    const response = await apiClient.post("/me");
     user.value = response.data.user;
     label.value = user.value.firstname[0] + user.value.lastname[0];
   } catch (error) {
-    router.push("/login");
+    console.error(error);
   }
 };
 
@@ -133,6 +141,20 @@ const userMenuItems = ref([
     },
   },
   {
+    label: "Become supporter",
+    icon: "pi pi-heart",
+    command: () => {
+      handleBecomeSuporter();
+    },
+  },
+  {
+    label: "Report a bug",
+    icon: "pi pi-hammer",
+    command: () => {
+      handleReportBug();
+    },
+  },
+  {
     label: "Logout",
     icon: "pi pi-sign-out",
     command: () => {
@@ -141,7 +163,7 @@ const userMenuItems = ref([
   },
 ]);
 
-const emit = defineEmits(["open-devices", "open-dashboard", "open-software"]);
+const emit = defineEmits(["open-devices", "open-dashboard"]);
 
 const items = ref([
   {
@@ -158,14 +180,6 @@ const items = ref([
     isActive: false,
     onClick: () => {
       openDevices();
-    },
-  },
-  {
-    label: "Software",
-    icon: "pi pi-code",
-    isActive: false,
-    onClick: () => {
-      openSoftware();
     },
   },
 ]);
@@ -192,35 +206,51 @@ const openDashboard = () => {
   emit("open-dashboard");
 };
 
-const openSoftware = () => {
-  items.value.forEach((item) => {
-    if (item.label === "Software") {
-      item.isActive = true;
-    } else {
-      item.isActive = false;
-    }
-  });
-  emit("open-software");
-};
-
 const openUserMenu = (event) => {
   menu.value.toggle(event);
 };
 
 const handleLogout = async () => {
   await store.dispatch("logout");
-  router.push("/login");
 };
 
 const handleOpenNotifications = () => {
-  showDialog.value = true;
-  showDialogHeader.value = "Notifications";
+  showNotifications.value = true;
 };
 
 const handleOpenEditUser = () => {
   showDialog.value = true;
   showUserData.value = true;
   showDialogHeader.value = "Edit User";
+  showNotifications.value = false;
+  showReportBug.value = false;
+};
+
+const handleBecomeSuporter = () => {
+  toast.add({
+    severity: "info",
+    summary: "Info",
+    detail: "This feature is not available yet",
+    life: 3000,
+  });
+};
+
+const handleReportBug = () => {
+  showDialog.value = true;
+  showReportBug.value = true;
+  showDialogHeader.value = "Report a bug";
+  showUserData.value = false;
+  showNotifications.value = false;
+};
+
+const handleBugReported = () => {
+  handleDialogHide();
+  toast.add({
+    severity: "success",
+    summary: "Success",
+    detail: "Bug reported successfully",
+    life: 3000,
+  });
 };
 
 const handleDialogHide = () => {
@@ -235,7 +265,6 @@ const handleUserUpdated = async () => {
     detail: "User data saved successfully",
     life: 3000,
   });
-  //handleDialogHide();
   await getUser();
 };
 </script>

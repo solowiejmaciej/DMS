@@ -19,18 +19,14 @@
       @upload-finished="closeDialog"
     ></SoftwareUpload>
   </Dialog>
-  <div legend="Software">
-    <div
-      class="flex flex-col gap-2 mx-auto"
-      style="min-height: 16rem; max-width: 20rem"
-    >
+  <div class="flex flex-col gap-2 mx-auto">
+    <div class="flex justify-between">
       <div class="field p-fluid m-2">
         <Button
           @click="openUploadSoftwareDialog"
           type="button"
-          label="Upload new software"
+          label="Upload new software to DMS"
           icon="pi pi-upload"
-          link
         >
         </Button>
       </div>
@@ -43,6 +39,16 @@
         >
         </Button>
       </div>
+      <div class="field p-fluid m-2">
+        <Button
+          :loading="isUpdateLoading"
+          @click="sentUpdateCommnad"
+          type="button"
+          label="Update device"
+          icon="pi pi-sync"
+        >
+        </Button>
+      </div>
     </div>
   </div>
 </template>
@@ -51,12 +57,16 @@
 import { ref } from "vue";
 import ManageSoftware from "./ManageSoftware.vue";
 import SoftwareUpload from "./SoftwareUpload.vue";
+import { useToast } from "primevue/usetoast";
+
+const toast = useToast();
 
 const showSoftwareUploadDialog = ref(false);
 const showManageSoftwareDialog = ref(false);
 const isDialogVisible = ref(false);
 
 const dialogHeader = ref("");
+const isUpdateLoading = ref(false);
 
 const closeDialog = () => {
   isDialogVisible.value = false;
@@ -74,5 +84,19 @@ const openManageSoftwareDialog = () => {
   isDialogVisible.value = true;
   showManageSoftwareDialog.value = true;
   dialogHeader.value = "Manage software updates";
+};
+
+const sentUpdateCommnad = () => {
+  isUpdateLoading.value = true;
+
+  setTimeout(() => {
+    isUpdateLoading.value = false;
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: "Update command sent",
+      life: 3000,
+    });
+  }, 2000);
 };
 </script>

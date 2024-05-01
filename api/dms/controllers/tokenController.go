@@ -6,6 +6,7 @@ import (
 	"dms/repositories"
 	"dms/services"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 )
@@ -50,22 +51,18 @@ func GenerateToken(c *gin.Context) {
 		BirthDate:   userFromDb.BirthDate.Format("2006-01-02"),
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token, "user": user})
+	var refreshToken, refreshTokenError = managers.GenerateRefreshToken(token)
+	if refreshTokenError != nil {
+		log.Error("Error while generating refresh token", refreshTokenError)
+	}
+	c.JSON(http.StatusOK, gin.H{"token": token, "refreshToken": refreshToken, "user": user})
 
 }
 
 func GetMe(c *gin.Context) {
-	var body struct {
-		Token string `json:"token"`
-	}
+	token := c.GetHeader("Authorization")
 
-	parsingError := c.BindJSON(&body)
-	if parsingError != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		return
-	}
-
-	var err, user = managers.GetUserFromToken(body.Token)
+	var err, user = managers.GetUserFromValidToken(token)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Invalid token"})
 		return
@@ -76,10 +73,39 @@ func GetMe(c *gin.Context) {
 
 func RefreshToken(c *gin.Context) {
 
+	var body struct {
+		Token        string `json:"token"`
+		RefreshToken string `json:"refreshToken"`
+	}
+
+	parsingError := c.BindJSON(&body)
+
+	if parsingError != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	newjwt, refreshError := managers.RefreshToken(body.Token, body.RefreshToken)
+
+	if refreshError != nil {
+		log.Errorf("Error while refreshing token, %v", refreshError)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid request"})
+		return
+	}
+	var newRefreshToken, newRefreshTokenError = managers.GenerateRefreshToken(newjwt)
+	if newRefreshTokenError != nil {
+		log.Error("Error while generating new refresh token", newRefreshTokenError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Please try again later"})
+		return
+	}
+
+	repositories.InvalidateTokenByValue(body.RefreshToken)
+
+	c.JSON(http.StatusOK, gin.H{"token": newjwt, "refreshToken": newRefreshToken})
+
 }
 
 func RegenerateApiKey(c *gin.Context) {
-	err, user := managers.GetUserFromToken(c.GetHeader("Authorization"))
+	err, user := managers.GetUserFromValidToken(c.GetHeader("Authorization"))
 	if err != nil {
 		return
 	}

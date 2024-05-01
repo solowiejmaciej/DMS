@@ -12,6 +12,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/joho/godotenv v1.5.1
 	github.com/sirupsen/logrus v1.9.3
+	github.com/streadway/amqp v1.1.0
 	github.com/takt-corp/gin-logrus v1.0.1
 	golang.org/x/crypto v0.21.0
 	gorm.io/driver/postgres v1.5.7

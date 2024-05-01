@@ -1,39 +1,35 @@
 <template>
-  <NavBar
-    @open-devices="openDevices"
-    @open-dashboard="openDashboard"
-    @open-software="openSoftware"
-  />
-  <DevicesGrid v-if="isDevicesViewActive" />
-  <div v-if="isDashboardViewActive">Dashboard</div>
-  <Software v-if="isSoftwareViewActive" />
+  <div class="flex flex-col min-h-screen">
+    <NavBar @open-devices="openDevices" @open-dashboard="openDashboard" />
+
+    <div class="flex-grow flex items-center justify-center">
+      <DevicesGrid v-if="isDevicesViewActive" />
+      <Dashboard v-if="isDashboardViewActive" />
+    </div>
+  </div>
 </template>
 
 <script setup>
 import NavBar from "../../components/NavBar.vue";
 import DevicesGrid from "../../components/Device/DevicesGrid.vue";
-import Software from "../../components/Device/Software/Software.vue";
+import Dashboard from "../../components/Dashboard/Dashboard.vue";
 import { ref } from "vue";
 
 const isDevicesViewActive = ref(false);
 const isDashboardViewActive = ref(true);
-const isSoftwareViewActive = ref(false);
 
 const openDevices = () => {
   isDevicesViewActive.value = true;
   isDashboardViewActive.value = false;
-  isSoftwareViewActive.value = false;
 };
 
 const openDashboard = () => {
   isDashboardViewActive.value = true;
   isDevicesViewActive.value = false;
-  isSoftwareViewActive.value = false;
 };
 
 const openSoftware = () => {
   isSoftwareViewActive.value = true;
   isDevicesViewActive.value = false;
-  isDashboardViewActive.value = false;
 };
 </script>

@@ -2,24 +2,31 @@ package initializers
 
 import (
 	"dms/db"
-	"dms/entites"
+	"dms/entities"
 	log "github.com/sirupsen/logrus"
 )
 
 func Migrate() {
-	err := db.DB.AutoMigrate(&entites.Device{})
+	log.Info("Performing migration")
+	err := db.DB.AutoMigrate(&entities.Device{})
 	if err != nil {
 		log.Error("Error while performing migration")
 		panic(err)
 	}
 
-	err = db.DB.AutoMigrate(&entites.DeviceConfiguration{})
+	err = db.DB.AutoMigrate(&entities.DeviceConfiguration{})
 	if err != nil {
 		log.Error("Error while performing migration")
 		panic(err)
 	}
 
-	err = db.DB.AutoMigrate(&entites.User{})
+	err = db.DB.AutoMigrate(&entities.User{})
+	if err != nil {
+		log.Error("Error while performing migration")
+		panic(err)
+	}
+
+	err = db.DB.AutoMigrate(&entities.RefreshToken{})
 	if err != nil {
 		log.Error("Error while performing migration")
 		panic(err)

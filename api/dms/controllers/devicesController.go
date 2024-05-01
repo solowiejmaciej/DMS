@@ -37,20 +37,25 @@ func GetDevices(c *gin.Context) {
 		return
 	}
 
-	var devicesResponse []models.DeviceModel
+	devicesResponse := make([]models.DeviceModel, 0)
 	for _, device := range devices {
 		devicesResponse = append(devicesResponse, models.DeviceModel{
 			DeviceId:        device.DeviceId,
 			UserId:          device.UserId,
-			CreatedAt:       device.CreatedAt,
+			CreatedAt:       device.CreatedAt.Format("2006-01-02 15:04"),
 			SoftwareVersion: device.SoftwareVersion,
 			DeviceModel:     device.DeviceModel,
 			DeviceBoardType: device.DeviceBoardType,
-			Status:          device.Status,
 			CodeBaseUrl:     device.CodeBaseUrl,
 		})
 	}
 	c.JSON(http.StatusOK, devicesResponse)
+}
+
+func GetDeviceStatus(c *gin.Context) {
+	deviceId := c.Param("deviceId")
+	status := services.CalculateDeviceStatus(deviceId)
+	c.JSON(http.StatusOK, gin.H{"status": status})
 }
 
 func GetDevice(c *gin.Context) {
@@ -64,11 +69,10 @@ func GetDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, models.DeviceModel{
 		DeviceId:        device.DeviceId,
 		UserId:          device.UserId,
-		CreatedAt:       device.CreatedAt,
+		CreatedAt:       device.CreatedAt.Format("2006-01-02 15:04"),
 		SoftwareVersion: device.SoftwareVersion,
 		DeviceModel:     device.DeviceModel,
 		DeviceBoardType: device.DeviceBoardType,
-		Status:          device.Status,
 		CodeBaseUrl:     device.CodeBaseUrl,
 	})
 }

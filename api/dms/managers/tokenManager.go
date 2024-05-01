@@ -1,24 +1,27 @@
 package managers
 
 import (
-	"dms/entites"
+	"dms/entities"
 	"dms/models"
 	"dms/repositories"
+	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"time"
 )
 
-func GenerateToken(user entites.User) (error, string) {
+func GenerateToken(user entities.User) (error, string) {
 	var token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email":  user.Email,
 		"userId": user.ID,
 		"iss":    "DMS",
-		"exp":    time.Now().Add(time.Hour).Unix(),
+		"exp":    time.Now().Add(time.Second * 15).Unix(),
 		"iat":    time.Now().Unix(),
 		"nbf":    time.Now().Unix(),
+		"jit":    uuid.New().String(),
 	})
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
@@ -48,7 +51,7 @@ func ValidateToken(tokenString string) bool {
 	return token.Valid
 }
 
-func GetUserFromToken(token string) (error, models.UserModel) {
+func GetUserFromValidToken(token string) (error, models.UserModel) {
 	claims := jwt.MapClaims{}
 	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_SECRET")), nil
@@ -74,5 +77,115 @@ func GetUserFromToken(token string) (error, models.UserModel) {
 		BirthDate:              user.BirthDate.Format("2006-01-02"),
 		IsPhoneNumberConfirmed: user.IsPhoneNumberConfirmed,
 	}
+
+}
+
+func GenerateRefreshToken(token string) (string, error) {
+	claims := jwt.MapClaims{}
+	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil {
+		log.Error("Error while parsing token", err)
+		return "", err
+	}
+
+	var userId = uint(claims["userId"].(float64))
+	var jit = claims["jit"].(string)
+
+	var refreshTokenString = uuid.New().String()
+
+	refreshToken := entities.RefreshToken{
+		UserId:       userId,
+		RefreshToken: refreshTokenString,
+		Jit:          jit,
+		ExpiresAt:    time.Now().Add(time.Hour * 24 * 30).Unix(),
+		IsValid:      true,
+	}
+
+	err = repositories.SaveRefreshToken(refreshToken)
+
+	if err != nil {
+		log.Error("Error while saving refresh token", err)
+		return "", err
+	}
+
+	return refreshTokenString, nil
+}
+
+func RefreshToken(token string, refreshToken string) (string, error) {
+	var userId, err = GetUserIdFromToken(token)
+	if err != nil {
+		return "", err
+	}
+
+	jit, jitErr := getJitFromToken(token)
+	if jitErr != nil {
+		log.Errorf("Unable to get jit from token: %v", err)
+		return "", err
+	}
+
+	refreshTokenEntity, err := repositories.GetRefreshToken(refreshToken)
+	if err != nil {
+		return "", err
+	}
+	if refreshTokenEntity.ExpiresAt <= time.Now().Unix() {
+		return "", errors.New("Token is not valid")
+	}
+
+	if !refreshTokenEntity.IsValid {
+		return "", errors.New("RefreshToken is not valid")
+	}
+
+	if refreshTokenEntity.UserId != userId {
+		return "", errors.New("RefreshToken not valid for this user")
+	}
+
+	if refreshTokenEntity.Jit != jit {
+		return "", errors.New("refresh token not valid for this jwt")
+	}
+
+	userEntity, userErr := repositories.GetById(userId)
+
+	if userErr != nil {
+		return "", errors.New("error while getting user")
+	}
+
+	jwtErr, newJwt := GenerateToken(userEntity)
+	if jwtErr != nil {
+		return "", errors.New("error while creating new jwt")
+	}
+
+	return newJwt, nil
+}
+
+func GetUserIdFromToken(token string) (userId uint, err error) {
+	claims := jwt.MapClaims{}
+	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil && err.Error() != "token has invalid claims: token is expired" {
+		log.Error("Error while parsing token", err)
+		return 0, err
+	}
+
+	userId = uint(claims["userId"].(float64))
+
+	return userId, nil
+}
+
+func getJitFromToken(tokenString string) (string, error) {
+	claims := jwt.MapClaims{}
+	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil && err.Error() != "token has invalid claims: token is expired" {
+		log.Error("Error while parsing token", err)
+		return "", err
+	}
+
+	var jit = claims["jit"].(string)
+
+	return jit, nil
 
 }

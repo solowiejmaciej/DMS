@@ -13,10 +13,7 @@
       },
     }"
   >
-    <ConfirmPhoneNumber
-      :phone-number="enteredPhoneNumber"
-      @phone-number-confirmed="handlePhoneNumberConfirmed"
-    />
+    <ConfirmPhoneNumber @phone-number-confirmed="handlePhoneNumberConfirmed" />
   </Dialog>
   <div class="flex justify-between">
     <Fieldset legend="Personal data">
@@ -307,6 +304,12 @@ watch(enteredPhoneNumber, (newVal, oldVal) => {
 });
 
 const handlePhoneNumberConfirmed = () => {
+  toast.add({
+    severity: "success",
+    summary: "Success",
+    detail: "Phone number confirmed",
+    life: 3000,
+  });
   isPhoneNumberDialogVisible.value = false;
   isPhoneNumberConfirmed.value = true;
 };
@@ -321,6 +324,10 @@ const regenerateApiKey = async () => {
       severity: "success",
       summary: "API Key Regenerated",
       life: 3000,
+    });
+    console.log(data.data.apiKey);
+    store.commit("setDmsApiKey", {
+      dmsApiKey: data.data.apiKey,
     });
   } catch (error) {
     toast.add({

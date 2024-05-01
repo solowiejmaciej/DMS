@@ -27,7 +27,12 @@
         <div class="field p-fluid m-2">
           <IconField>
             <FloatLabel>
-              <Password id="password" v-model="userPassword" toggleMask />
+              <Password
+                id="password"
+                v-model="userPassword"
+                toggleMask
+                :feedback="false"
+              />
               <label for="password">Password</label>
             </FloatLabel>
             <div v-if="v$.userPassword.$error" class="error-message">

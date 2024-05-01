@@ -1,4 +1,4 @@
-package entites
+package entities
 
 import "gorm.io/gorm"
 
@@ -9,7 +9,6 @@ type Device struct {
 	SoftwareVersion string `gorm:"not null"`
 	DeviceModel     string `gorm:"not null"`
 	DeviceBoardType string `gorm:"not null"`
-	Status          string `gorm:"default:'ONLINE'"`
 	CodeBaseUrl     string
 	User            User
 }
